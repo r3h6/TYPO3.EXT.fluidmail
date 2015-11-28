@@ -1,4 +1,5 @@
 <?php
+
 namespace TYPO3\Fluidmail\ViewHelpers;
 
 use Swift_Image;
@@ -6,26 +7,26 @@ use TYPO3\CMS\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3\Fluidmail\Mail\TemplateMailMessage;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
+class ImageViewHelper extends AbstractTagBasedViewHelper
+{
+    protected $tagName = 'img';
 
-class ImageViewHelper extends AbstractTagBasedViewHelper {
+    /**
+     * [render description].
+     *
+     * @param string $src [description]
+     *
+     * @return [type] [description]
+     */
+    public function render($src = null)
+    {
 
-	protected $tagName = 'img';
+        /* @var TYPO3\Fluidmail\Mail\TemplateMailMessage */
+        $message = $this->templateVariableContainer->get(TemplateMailMessage::VARIABLE_NAME);
+        $imageUri = $message->embed(Swift_Image::fromPath(GeneralUtility::getFileAbsFileName($src)));
 
-	/**
-	 * [render description]
-	 * @param  string $src [description]
-	 * @return [type]      [description]
-	 */
-	public function render($src = null){
+        $this->tag->addAttribute('src', $imageUri);
 
-
-
-		/** @var TYPO3\Fluidmail\Mail\TemplateMailMessage */
-		$message = $this->templateVariableContainer->get(TemplateMailMessage::VARIABLE_NAME);
-		$imageUri = $message->embed(Swift_Image::fromPath(GeneralUtility::getFileAbsFileName($src)));
-
-		$this->tag->addAttribute('src', $imageUri);
-
-		return $this->tag->render();
-	}
+        return $this->tag->render();
+    }
 }

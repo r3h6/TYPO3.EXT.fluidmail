@@ -1,4 +1,5 @@
 <?php
+
 namespace TYPO3\Fluidmail\Mail;
 
 /***************************************************************
@@ -31,128 +32,137 @@ use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\Fluidmail\Exception as FluidmailException;
 
 /**
- * TemplateMailMessage
+ * TemplateMailMessage.
  */
-class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage{
+class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
+{
+    const FORMAT_HTML = 'html';
+    const FORMAT_TEXT = 'text';
+    const FORMAT_BOTH = 'both';
+    const VARIABLE_NAME = 'message';
 
-	const FORMAT_HTML = 'html';
-	const FORMAT_TEXT = 'text';
-	const FORMAT_BOTH = 'both';
-	const VARIABLE_NAME = 'message';
+    /**
+     * @var \TYPO3\CMS\Extbase\Object\ObjectManager
+     * @inject
+     */
+    protected $objectManager;
 
-	/**
-	 * @var \TYPO3\CMS\Extbase\Object\ObjectManager
-	 * @inject
-	 */
-	protected $objectManager;
+    /**
+     * [$configurationManager description].
+     *
+     * @var TYPO3\CMS\Extbase\Configuration\ConfigurationManager
+     * @inject
+     */
+    protected $configurationManager;
 
-	/**
-	 * [$configurationManager description]
-	 * @var TYPO3\CMS\Extbase\Configuration\ConfigurationManager
-	 * @inject
-	 */
-	protected $configurationManager;
+    /**
+     * [$variables description].
+     *
+     * @var array
+     */
+    protected $variables = array();
 
-	/**
-	 * [$variables description]
-	 * @var array
-	 */
-	protected $variables = array();
+    /**
+     * [getVariables description].
+     *
+     * @return array [description]
+     */
+    public function getVariables()
+    {
+        return $this->variables;
+    }
 
-	/**
-	 * [getVariables description]
-	 * @return array [description]
-	 */
-	public function getVariables (){
-		return $this->variables;
-	}
+    /**
+     * [setBodyFromTemplate description].
+     *
+     * @param string $templateName Template name
+     * @param array  $variables    [description]
+     * @param string $format       html or text
+     *
+     * @return TemplateMailMessage [description]
+     */
+    public function setBodyFromTemplate($templateName, $variables = array(), $format = self::FORMAT_BOTH)
+    {
+        switch ($format) {
+            case self::FORMAT_BOTH:
+            case self::FORMAT_HTML:
+            case self::FORMAT_TEXT:
+                break;
+            default:
+                throw new InvalidArgumentException("Invalid argument format '$format'!", 1429125858);
+                break;
+        }
 
-	/**
-	 * [setBodyFromTemplate description]
-	 * @param string $templateName Template name
-	 * @param array  $variables    [description]
-	 * @param string $format html or text
-	 * @return  TemplateMailMessage [description]
-	 */
-	public function setBodyFromTemplate ($templateName, $variables = array(), $format = TemplateMailMessage::FORMAT_BOTH){
+        $this->variables = array_merge($this->variables, $variables);
 
-		switch ($format) {
-			case TemplateMailMessage::FORMAT_BOTH:
-			case TemplateMailMessage::FORMAT_HTML:
-			case TemplateMailMessage::FORMAT_TEXT:
-				break;
-			default:
-				throw new InvalidArgumentException("Invalid argument format '$format'!", 1429125858);
-				break;
-		}
+        $text = null;
+        $html = null;
 
-		$this->variables = array_merge($this->variables, $variables);
+        if ($format !== self::FORMAT_HTML) {
+            try {
+                $text = $this->renderTemplate($templateName, $variables, 'txt');
+            } catch (FluidmailException $exception) {
+                if ($format !== self::FORMAT_BOTH) {
+                    throw $exception;
+                }
+            }
+        }
 
-		$text = NULL;
-		$html = NULL;
+        if ($format !== self::FORMAT_TEXT) {
+            $html = $this->renderTemplate($templateName, $variables, 'html');
+        }
 
-		if ($format !== TemplateMailMessage::FORMAT_HTML){
-			try {
-				$text = $this->renderTemplate($templateName, $variables, 'txt');
-			}catch (FluidmailException $exception){
-				if ($format !== TemplateMailMessage::FORMAT_BOTH){
-					throw $exception;
-				}
-			}
-		}
+        if ($text === null && $format === self::FORMAT_BOTH) {
+            // $text = Converter::html2text($html);
+        }
 
-		if ($format !== TemplateMailMessage::FORMAT_TEXT){
-			$html = $this->renderTemplate($templateName, $variables, 'html');
-		}
+        if ($text !== null) {
+            $this->setBody($text, 'text/plain');
+            if ($html !== null) {
+                $this->addPart($html, 'text/html');
+            }
+        } else {
+            $this->setBody($html, 'text/html');
+        }
 
-		if ($text === NULL && $format === TemplateMailMessage::FORMAT_BOTH){
-			// $text = Converter::html2text($html);
-		}
+        return $this;
+    }
 
-		if ($text !== NULL){
-			$this->setBody($text, 'text/plain');
-			if ($html !== NULL){
-				$this->addPart($html, 'text/html');
-			}
-		} else {
-			$this->setBody($html, 'text/html');
-		}
-
-		return $this;
-	}
-
-	/**
-	 * [renderTemplate description]
-	 * @param  string $templateName Template name
-	 * @param  array $variables
-	 * @param  string $format       [description]
-	 * @return string               [description]
-	 */
-	protected function renderTemplate ($templateName, $variables, $format){
+    /**
+     * [renderTemplate description].
+     *
+     * @param string $templateName Template name
+     * @param array  $variables
+     * @param string $format       [description]
+     *
+     * @return string [description]
+     */
+    protected function renderTemplate($templateName, $variables, $format)
+    {
 
 //CONFIGURATION_TYPE_FRAMEWORK
-		$extbaseFrameworkConfiguration = $this->configurationManager->getConfiguration(\TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
-		$templateRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['templateRootPath']);
-		$templatePathAndFilename = rtrim($templateRootPath, '/') . '/MailMessage/' . $templateName . '.' . $format;
+        $extbaseFrameworkConfiguration = $this->configurationManager->getConfiguration(\TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
+        $templateRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['templateRootPath']);
+        $templatePathAndFilename = rtrim($templateRootPath, '/').'/MailMessage/'.$templateName.'.'.$format;
 
-		if (!file_exists($templatePathAndFilename)){
-			throw new FluidmailException("Template '$templatePathAndFilename' not found.", 1429045685);
-		}
+        if (!file_exists($templatePathAndFilename)) {
+            throw new FluidmailException("Template '$templatePathAndFilename' not found.", 1429045685);
+        }
 
+        $layoutRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['layoutRootPath']);
+        $partialRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['partialRootPath']);
+        // \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($extbaseFrameworkConfiguration);
+        // \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($templateRootPath);
 
-		$layoutRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['layoutRootPath']);
-		$partialRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['partialRootPath']);
-		// \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($extbaseFrameworkConfiguration);
-		// \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($templateRootPath);
+        /** @var \TYPO3\CMS\Fluid\View\StandaloneView $view */
+        $view = $this->objectManager->get('TYPO3\\CMS\\Fluid\\View\\StandaloneView');
+        $view->setFormat($format);
+        $view->setTemplatePathAndFilename($templatePathAndFilename);
+        $view->setLayoutRootPath($layoutRootPath);
+        $view->setPartialRootPath($partialRootPath);
+        $view->assign(self::VARIABLE_NAME, $this);
+        $view->assignMultiple($variables);
 
-		/** @var \TYPO3\CMS\Fluid\View\StandaloneView $view */
-		$view = $this->objectManager->get('TYPO3\\CMS\\Fluid\\View\\StandaloneView');
-		$view->setFormat($format);
-		$view->setTemplatePathAndFilename($templatePathAndFilename);
-		$view->setLayoutRootPath($layoutRootPath);
-		$view->setPartialRootPath($partialRootPath);
-		$view->assign(self::VARIABLE_NAME, $this);
-		$view->assignMultiple($variables);
-		return $view->render();
-	}
+        return $view->render();
+    }
 }
