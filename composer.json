@@ -1,5 +1,5 @@
 {
-    "name": "r3h6/ext-fluidmail",
+    "name": "r3h6/fluidmail",
     "type": "typo3-cms-extension",
     "description": "Use fluid for creating e-mail messages.",
     "keywords": [
@@ -35,8 +35,8 @@
         }
     },
     "replace": {
-        "ext_fluidmail": "self.version",
-        "typo3-ter/ext-fluidmail": "self.version"
+        "fluidmail": "self.version",
+        "typo3-ter/fluidmail": "self.version"
     },
     "config": {
         "vendor-dir": ".Build/vendor",
