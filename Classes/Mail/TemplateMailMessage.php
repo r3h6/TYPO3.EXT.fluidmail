@@ -139,8 +139,6 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
      */
     protected function renderTemplate($templateName, $variables, $format)
     {
-
-//CONFIGURATION_TYPE_FRAMEWORK
         $extbaseFrameworkConfiguration = $this->configurationManager->getConfiguration(\TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
         $templateRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['templateRootPath']);
         $templatePathAndFilename = rtrim($templateRootPath, '/').'/MailMessage/'.$templateName.'.'.$format;
