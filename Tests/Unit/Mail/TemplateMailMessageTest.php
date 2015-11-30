@@ -31,7 +31,6 @@ class TemplateMailMessageTest extends \TYPO3\CMS\Core\Tests\UnitTestCase
 
     public function setUp()
     {
-        // $this->subject = $this->getMock(TemplateMailMessage::class, array(), array(), '', FALSE);
         $this->subject = new TemplateMailMessage();
 
         $this->configurationManager = $this->getMock(ConfigurationManager::class, array('getConfiguration'), array(), '', false);
@@ -81,6 +80,6 @@ class TemplateMailMessageTest extends \TYPO3\CMS\Core\Tests\UnitTestCase
     public function setImage()
     {
         $this->subject->setBodyFromTemplate('Image');
-        $this->assertRegExp('#<img src="cid:[a-z0-9]+@swift.generated" />#i', $this->subject->getBody());
+        $this->assertRegExp('#<img src=[^"]*"cid:[a-z0-9]+@swift.generated" />#im', $this->subject->toString());
     }
 }

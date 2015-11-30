@@ -29,6 +29,8 @@ namespace TYPO3\Fluidmail\Mail;
 
 use InvalidArgumentException;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\MailUtility;
+use TYPO3\Fluidmail\Utility\FormatUtility;
 use TYPO3\Fluidmail\Exception as FluidmailException;
 
 /**
@@ -63,6 +65,22 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
     protected $variables = array();
 
     /**
+     * Create a new Message.
+     *
+     * Details may be optionally passed into the constructor.
+     *
+     * @param string $subject
+     * @param string $body
+     * @param string $contentType
+     * @param string $charset
+     */
+    public function __construct($subject = null, $body = null, $contentType = null, $charset = null)
+    {
+        parent::__construct($subject, $body, $contentType, $charset);
+        $this->setFrom(MailUtility::getSystemFrom());
+    }
+
+    /**
      * [getVariables description].
      *
      * @return array [description]
@@ -73,11 +91,11 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
     }
 
     /**
-     * [setBodyFromTemplate description].
+     * Renders a template given by name and adds this to the message.
      *
      * @param string $templateName Template name
      * @param array  $variables    [description]
-     * @param string $format       html or text
+     * @param string $format       html, text or both
      *
      * @return TemplateMailMessage [description]
      */
@@ -113,7 +131,7 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
         }
 
         if ($text === null && $format === self::FORMAT_BOTH) {
-            // $text = Converter::html2text($html);
+            $text = FormatUtility::html2text($html);
         }
 
         if ($text !== null) {
@@ -140,24 +158,40 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
     protected function renderTemplate($templateName, $variables, $format)
     {
         $extbaseFrameworkConfiguration = $this->configurationManager->getConfiguration(\TYPO3\CMS\Extbase\Configuration\ConfigurationManagerInterface::CONFIGURATION_TYPE_FRAMEWORK);
-        $templateRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['templateRootPath']);
-        $templatePathAndFilename = rtrim($templateRootPath, '/').'/MailMessage/'.$templateName.'.'.$format;
 
-        if (!file_exists($templatePathAndFilename)) {
-            throw new FluidmailException("Template '$templatePathAndFilename' not found.", 1429045685);
+        $partialRootPaths = isset($extbaseFrameworkConfiguration['view']['partialRootPaths']) ?
+            $extbaseFrameworkConfiguration['view']['partialRootPaths']:
+            [0 => $extbaseFrameworkConfiguration['view']['partialRootPath']];
+
+        $layoutRootPaths = isset($extbaseFrameworkConfiguration['view']['layoutRootPaths']) ?
+            $extbaseFrameworkConfiguration['view']['layoutRootPaths']:
+            [0 => $extbaseFrameworkConfiguration['view']['layoutRootPath']];
+
+        $templateRootPaths = isset($extbaseFrameworkConfiguration['view']['templateRootPaths']) ?
+            $extbaseFrameworkConfiguration['view']['templateRootPaths']:
+            [0 => $extbaseFrameworkConfiguration['view']['templateRootPath']];
+
+        $templatePathAndFilename = '';
+        foreach (array_reverse($templateRootPaths) as $templateRootPath) {
+            $templatePathAndFilename = GeneralUtility::getFileAbsFileName(
+                rtrim($templateRootPath, '/') . '/MailMessage/' . $templateName . '.' . $format
+            );
+            if (file_exists($templatePathAndFilename)) {
+                break;
+            } else {
+                $templatePathAndFilename = '';
+            }
         }
-
-        $layoutRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['layoutRootPath']);
-        $partialRootPath = GeneralUtility::getFileAbsFileName($extbaseFrameworkConfiguration['view']['partialRootPath']);
-        // \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($extbaseFrameworkConfiguration);
-        // \TYPO3\CMS\Extbase\Utility\DebuggerUtility::var_dump($templateRootPath);
+        if ($templatePathAndFilename === '') {
+            throw new FluidmailException("Template 'MailMessage/$templateName.$format' not found!", 1429045685);
+        }
 
         /** @var \TYPO3\CMS\Fluid\View\StandaloneView $view */
         $view = $this->objectManager->get('TYPO3\\CMS\\Fluid\\View\\StandaloneView');
         $view->setFormat($format);
         $view->setTemplatePathAndFilename($templatePathAndFilename);
-        $view->setLayoutRootPath($layoutRootPath);
-        $view->setPartialRootPath($partialRootPath);
+        $view->setLayoutRootPaths($layoutRootPaths);
+        $view->setPartialRootPaths($partialRootPaths);
         $view->assign(self::VARIABLE_NAME, $this);
         $view->assignMultiple($variables);
 

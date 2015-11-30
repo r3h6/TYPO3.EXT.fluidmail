@@ -1,13 +1,13 @@
 <?php
 
-namespace TYPO3\Fluidmail\ViewHelpers;
+namespace TYPO3\Fluidmail\ViewHelpers\Image;
 
 use Swift_Image;
 use TYPO3\CMS\Fluid\Core\ViewHelper\AbstractTagBasedViewHelper;
 use TYPO3\Fluidmail\Mail\TemplateMailMessage;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 
-class ImageViewHelper extends AbstractTagBasedViewHelper
+class InlineViewHelper extends AbstractTagBasedViewHelper
 {
     protected $tagName = 'img';
 
