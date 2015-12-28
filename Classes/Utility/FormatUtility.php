@@ -70,7 +70,7 @@ class FormatUtility
         );
 
         // 1. remove complete head element
-        $content = preg_replace('/<head>(.*?)<\/head>/i', '', $content);
+        $content = preg_replace('/<head>(.*?)<\/head>/is', '', $content);
         // 2. remove linebreaks, tabs
         $content = trim(str_replace(array("\n", "\r", "\t"), '', $content));
         // 3. add linebreaks on some parts (</p> => </p><br />)

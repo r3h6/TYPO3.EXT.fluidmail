@@ -130,7 +130,7 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
             $html = $this->renderTemplate($templateName, $variables, 'html');
         }
 
-        if ($text === null && $format === self::FORMAT_BOTH) {
+        if ($format === self::FORMAT_BOTH && $text === null) {
             $text = FormatUtility::html2text($html);
         }
 
@@ -171,7 +171,7 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
             $extbaseFrameworkConfiguration['view']['templateRootPaths']:
             [0 => $extbaseFrameworkConfiguration['view']['templateRootPath']];
 
-        $templatePathAndFilename = '';
+        $templatePathAndFilename = null;
         foreach (array_reverse($templateRootPaths) as $templateRootPath) {
             $templatePathAndFilename = GeneralUtility::getFileAbsFileName(
                 rtrim($templateRootPath, '/') . '/MailMessage/' . $templateName . '.' . $format
@@ -179,12 +179,18 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
             if (file_exists($templatePathAndFilename)) {
                 break;
             } else {
-                $templatePathAndFilename = '';
+                $templatePathAndFilename = null;
             }
         }
-        if ($templatePathAndFilename === '') {
+        if ($templatePathAndFilename === null) {
             throw new FluidmailException("Template 'MailMessage/$templateName.$format' not found!", 1429045685);
         }
+
+        if (isset($variables[self::VARIABLE_NAME])) {
+            throw new FluidmailException(sprintf("Variable name '%s' is reserved", self::VARIABLE_NAME), 1451333653);
+        }
+
+        $variables[self::VARIABLE_NAME] = $this;
 
         /** @var \TYPO3\CMS\Fluid\View\StandaloneView $view */
         $view = $this->objectManager->get('TYPO3\\CMS\\Fluid\\View\\StandaloneView');
@@ -192,7 +198,6 @@ class TemplateMailMessage extends \TYPO3\CMS\Core\Mail\MailMessage
         $view->setTemplatePathAndFilename($templatePathAndFilename);
         $view->setLayoutRootPaths($layoutRootPaths);
         $view->setPartialRootPaths($partialRootPaths);
-        $view->assign(self::VARIABLE_NAME, $this);
         $view->assignMultiple($variables);
 
         return $view->render();

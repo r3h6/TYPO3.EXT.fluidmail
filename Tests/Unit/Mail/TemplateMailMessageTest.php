@@ -31,6 +31,8 @@ class TemplateMailMessageTest extends \TYPO3\CMS\Core\Tests\UnitTestCase
 
     public function setUp()
     {
+        $GLOBALS['TYPO3_DB'] = $this->getMock(DatabaseConnection::class);
+
         $this->subject = new TemplateMailMessage();
 
         $this->configurationManager = $this->getMock(ConfigurationManager::class, array('getConfiguration'), array(), '', false);
@@ -45,13 +47,57 @@ class TemplateMailMessageTest extends \TYPO3\CMS\Core\Tests\UnitTestCase
 
         $objectManager = GeneralUtility::makeInstance(ObjectManager::class);
         $this->inject($this->subject, 'objectManager', $objectManager);
-
-        $GLOBALS['TYPO3_DB'] = $this->getMock(DatabaseConnection::class);
     }
 
     public function tearDown()
     {
-        unset($this->subject, $this->configurationManager);
+        unset($this->subject, $this->configurationManager, $GLOBALS['TYPO3_DB']);
+    }
+
+    /**
+     * @test
+     */
+    public function renderTextExampleAndCheckContentType()
+    {
+        $this->subject->setBodyFromTemplate('Example', array(), TemplateMailMessage::FORMAT_TEXT);
+        $this->assertSame('text/plain', $this->subject->getContentType());
+        $this->assertSame('Text Example', $this->subject->getBody());
+    }
+
+    /**
+     * @test
+     */
+    public function renderHtmlExampleAndCheckContentType()
+    {
+        $this->subject->setBodyFromTemplate('Example', array(), TemplateMailMessage::FORMAT_HTML);
+        $this->assertSame('text/html', $this->subject->getContentType());
+        $this->assertRegExp('#<h1>HTML Example</h1>#', $this->subject->getBody());
+    }
+
+    /**
+     * @test
+     */
+    public function renderTextAndHtmlExampleAndCheckContentType()
+    {
+        $this->subject->setBodyFromTemplate('Example', array(), TemplateMailMessage::FORMAT_BOTH);
+        $this->assertSame('multipart/alternative', $this->subject->getContentType());
+        $this->assertSame('Text Example', $this->subject->getBody());
+        $children = $this->subject->getChildren();
+        $this->assertSame(1, count($children));
+        $this->assertRegExp('#<h1>HTML Example</h1>#', $children[0]->getBody());
+    }
+
+    /**
+     * @test
+     */
+    public function renderHtmlWithTextFallback()
+    {
+        $this->subject->setBodyFromTemplate('TYPO3', array(), TemplateMailMessage::FORMAT_BOTH);
+        $this->assertSame('multipart/alternative', $this->subject->getContentType());
+        $this->assertSame('TYPO3', $this->subject->getBody());
+        $children = $this->subject->getChildren();
+        $this->assertSame(1, count($children));
+        $this->assertRegExp('#<h1>TYPO3</h1>#', $children[0]->getBody());
     }
 
     /**
@@ -62,6 +108,15 @@ class TemplateMailMessageTest extends \TYPO3\CMS\Core\Tests\UnitTestCase
         $title = 'TYPO3';
         $this->subject->setBodyFromTemplate('Simple', ['title' => $title]);
         $this->assertRegExp('/'.$title.'/', $this->subject->getBody());
+    }
+
+    /**
+     * @test
+     * @expectedException TYPO3\Fluidmail\Exception
+     */
+    public function setReservedVariable()
+    {
+         $this->subject->setBodyFromTemplate('Simple', ['message' => 'Variable already exists!']);
     }
 
     /**
